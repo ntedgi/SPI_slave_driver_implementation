@@ -1,0 +1,4 @@
+#!/bin/bash
+cd ..
+wget https://github.com/RobertCNelson/linux-stable-rcn-ee/archive/4.4.9-ti-r25.tar.gz
+tar xzvf 4.4.9-ti-r25.tar.gz
