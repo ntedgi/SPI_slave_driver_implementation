@@ -11,7 +11,7 @@
 #define TX_ARRAY_SIZE	8
 #define RX_ARRAY_SIZE	8
 
-static const char *device = "/dev/spislave0";
+static const char *device = "/lib/modules/4.4.52-ti-r91/kernel/drivers/spi/spidev.ko";
 
 static uint32_t tx_actual_length;
 static uint32_t rx_actual_length;
@@ -80,10 +80,12 @@ static int put_setting(int fd)
 	int ret = 0;
 
 	ret = ioctl(fd, SPISLAVE_WR_BITS_PER_WORD, &bits_per_word);
+	printf("first ioctal\n");
 	if (ret == -1)
 		return -1;
 
 	ret = ioctl(fd, SPISLAVE_WR_MODE, &mode);
+	printf("secound octal\n");
 	if (ret == -1)
 		return -1;
 
@@ -118,6 +120,7 @@ static void print_setting(void)
 	printf("TX length:%d, RX length:%d, Bits per word:%d\n",
 	       tx_actual_length, rx_actual_length, bits_per_word);
 	printf("Mode:%d\n", mode);
+
 }
 
 static void print_usage(const char *prog)
@@ -184,25 +187,35 @@ int main(int argc, char *argv[])
 
 	if (ret == -1)
 		printf("Can't write bits per word\n");
+	
+	
+	
+		print_setting();
 
-	print_setting();
+		ret = put_setting(fd);
 
-	ret = put_setting(fd);
-	if (ret == -1)
-		return -1;
+		printf("End print setting/n");	
 
-	ret = transfer_8bit(fd);
-	if (ret == -1) {
-		printf("Failed to writes");
-		return -1;
+		if (ret == -1)
+			return -1;
+
+		ret = transfer_8bit(fd);
+		if (ret == -1) {
+			printf("Failed to writes");
+			return -1;
+		}
+	
+	for(;;){
+		ret = read_8bit(fd);
+		if (ret < 0) {
+			printf("Failed to reads!\n");
+			return -1;
+		}
+		int i;
+		for(i =0;i<100;i++){
+			printf("%d",i);
+		}	
 	}
-
-	ret = read_8bit(fd);
-	if (ret < 0) {
-		printf("Failed to reads!\n");
-		return -1;
-	}
-
 	close(fd);
 
 	return ret;
