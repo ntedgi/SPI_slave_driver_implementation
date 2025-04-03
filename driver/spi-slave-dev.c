@@ -60,14 +60,15 @@ static ssize_t spislave_read(struct file *filp, char __user *buf, size_t count,
 	unsigned long flags;
 	int ret = 0;
 
+	msg->mode |= SPISLAVE_TRM;
+	msg->mode &= ~SPISLAVE_RM;
+
 	pr_info("%s: function: read\n", DRIVER_NAME);
-	/*
-	 *if (msg->mode == SPISLAVE_SLAVE_MODE) {
-	 *	ret = spislave_transfer_msg(slave);
-	 *	if (ret < 0)
-	 *		status = -EFAULT;
-	 *}
-	 */
+
+	ret = spislave_transfer_msg(slave);
+	if (ret < 0)
+		status = -EFAULT;
+
 	spin_lock_irqsave(&msg->wait_lock, flags);
 
 	if (filp->f_flags & O_NONBLOCK) {
@@ -93,12 +94,6 @@ static ssize_t spislave_read(struct file *filp, char __user *buf, size_t count,
 
 	if (count > msg->buf_depth)
 		return -EMSGSIZE;
-
-	if (!msg->tx) {
-		msg->tx = kzalloc(msg->buf_depth, GFP_KERNEL);
-		if (!msg->tx)
-			return -ENOMEM;
-	}
 
 	if (!msg->rx) {
 		msg->rx = kzalloc(msg->buf_depth, GFP_KERNEL);
@@ -157,7 +152,9 @@ static ssize_t spislave_write(struct file *filp, const char __user *buf,
 
 	mutex_unlock(&msg->msg_lock);
 
-	/*if (msg->mode == SPISLAVE_MASTER_MODE) {*/
+	msg->mode |= SPISLAVE_TRM;
+	msg->mode &= ~SPISLAVE_TM;
+
 	ret = spislave_transfer_msg(slave);
 	if (ret < 0) {
 		status = -EFAULT;
@@ -171,10 +168,14 @@ static int spislave_release(struct inode *inode, struct file *filp)
 {
 	struct spislave_data *data = filp->private_data;
 	struct spislave *slave = data->slave;
+	struct spislave_message *msg = slave->msg;
 
 	pr_info("%s: function: release\n", DRIVER_NAME);
 
 	mutex_lock(&spislave_dev_list_lock);
+
+	kfree(msg->tx);
+	kfree(msg->rx);
 
 	spislave_msg_remove(slave);
 
@@ -218,6 +219,7 @@ static int spislave_open(struct inode *inode, struct file *filp)
 	msg = spislave_msg_alloc(slave);
 	if (!msg)
 		ret = -ENOMEM;
+	msg->buf_depth = buf_depth;
 
 	mutex_unlock(&spislave_dev_list_lock);
 
@@ -240,6 +242,14 @@ static long spislave_ioctl(struct file *filp, unsigned int cmd,
 
 	mutex_lock(&msg->msg_lock);
 
+	/*
+	 * FIXME: check arg and cmd argument, if cmd is ioctl type
+	 */
+
+	/*
+	 * FIXME: check all ioctl inputs and outputs
+	 */
+
 	switch (cmd) {
 	case SPISLAVE_RD_TX_ACTUAL_LENGTH:
 		ret = __put_user(msg->tx_actual_length, (__u32 __user *)arg);
@@ -254,7 +264,7 @@ static long spislave_ioctl(struct file *filp, unsigned int cmd,
 		break;
 
 	case SPISLAVE_RD_MODE:
-		ret = __put_user(msg->mode, (__u8 __user *)arg);
+		ret = __put_user(msg->mode, (__u32 __user *)arg);
 		break;
 
 	case SPISLAVE_RD_MAX_SPEED:
@@ -266,7 +276,7 @@ static long spislave_ioctl(struct file *filp, unsigned int cmd,
 		break;
 
 	case SPISLAVE_WR_MODE:
-		ret = __get_user(msg->mode, (__u8 __user *)arg);
+		ret = __get_user(msg->mode, (__u32 __user *)arg);
 		break;
 
 	case SPISLAVE_WR_MAX_SPEED:
@@ -274,6 +284,14 @@ static long spislave_ioctl(struct file *filp, unsigned int cmd,
 		break;
 
 	default:
+
+		/*
+		 * TODO: add support for full-duplex transfer
+		 * message uses own structures which located in
+		 * spi-slave-dev.h,
+		 *
+		 * need translate ioctl message to spi slave message standards
+		 */
 
 		size_msg = _IOC_SIZE(cmd);
 		pr_info("%s: ioctl size_msg:%d/n", DRIVER_NAME, size_msg);

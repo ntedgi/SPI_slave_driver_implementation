@@ -124,12 +124,12 @@ struct mcspi_drv {
 	unsigned int irq;
 };
 
-unsigned int mcspi_slave_read_reg(void __iomem *base, u32 idx)
+inline unsigned int mcspi_slave_read_reg(void __iomem *base, u32 idx)
 {
 	return ioread32(base + idx);
 }
 
-void mcspi_slave_write_reg(void __iomem *base,
+inline void mcspi_slave_write_reg(void __iomem *base,
 		u32 idx, u32 val)
 {
 	iowrite32(val, base + idx);
@@ -569,7 +569,7 @@ struct omap2_mcspi_platform_config mcspi_slave_pdata = {
 
 const struct of_device_id mcspi_slave_of_match[] = {
 	{
-		.compatible = "ti,omap4-mcspi-slave",
+		.compatible = "spislave,spi-slave-debug",
 		.data = &mcspi_slave_pdata,
 	},
 	{ }
@@ -673,6 +673,13 @@ static int mcspi_slave_probe(struct platform_device *pdev)
 	mcspi->irq = irq;
 	mcspi->pol = pol;
 	mcspi->pha = pha;
+
+	/* FIXME:
+	 * CPOL and CPHA doesnt depend on device property which
+	 * located in dts file but CPOL and CPHA is setting when message is on
+	 * going
+	 */
+
 
 	slave->transfer_msg = mcspi_slave_transfer;
 	slave->clear_msg = mcspi_slave_clear;

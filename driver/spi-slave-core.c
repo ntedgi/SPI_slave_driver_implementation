@@ -48,7 +48,9 @@ void spislave_msg_remove(struct spislave *slave)
 
 	pr_info("%s: function: msg remove\n", DRIVER_NAME);
 
-	slave->clear_msg(slave);
+	if (slave->clear_msg != NULL)
+		slave->clear_msg(slave);
+
 	msg = slave->msg;
 	kfree(msg);
 }
@@ -60,7 +62,8 @@ int spislave_transfer_msg(struct spislave *slave)
 
 	pr_info("%s: function: transfer msg\n", DRIVER_NAME);
 
-	ret = slave->transfer_msg(slave);
+	if (slave->transfer_msg != NULL)
+		ret = slave->transfer_msg(slave);
 
 	return ret;
 }
@@ -70,7 +73,8 @@ int spislave_clear_transfer(struct spislave *slave)
 {
 	pr_info("%s: function: clear transfer\n", DRIVER_NAME);
 
-	slave->clear_msg(slave);
+	if (slave->clear_msg != NULL)
+		slave->clear_msg(slave);
 
 	return 0;
 }
